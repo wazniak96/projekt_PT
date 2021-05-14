@@ -76,6 +76,16 @@ public class StartMenu : MonoBehaviour
         GameObject.Find("StartMenu").SetActive(false);
     }
 
+    public void OpenInstruction()
+    {
+        Application.OpenURL("http://inicjatywab.pl/wp-content/uploads/2019/01/Eksploduj%C4%85ce-kotki-Instrukcja.pdf");
+    }
+
+    public void QuitGame()
+    {
+        Application.Quit();
+    }
+
     public void EnableBoard()
     {
         Board.SetActive(true);

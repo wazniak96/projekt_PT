@@ -70,8 +70,17 @@ public class Player : NetworkBehaviour
         ReadPermission = NetworkVariablePermission.Everyone
     });
 
+    public NetworkVariableInt CardsToTake = new NetworkVariableInt(new NetworkVariableSettings
+    {
+        WritePermission = NetworkVariablePermission.ServerOnly,
+        ReadPermission = NetworkVariablePermission.Everyone
+    });
 
-
+    public NetworkVariableInt LastUsedCard = new NetworkVariableInt(new NetworkVariableSettings
+    {
+        WritePermission = NetworkVariablePermission.ServerOnly,
+        ReadPermission = NetworkVariablePermission.Everyone
+    });
 
     public override void NetworkStart()
     {
@@ -137,7 +146,7 @@ public class Player : NetworkBehaviour
     }
 
     [ServerRpc]
-    public void NextPlayerServerRpc()
+    public void NextPlayerServerRpc(int cardsToTake = 1)
     {
         int tmp = ActualPlayer.Value;
         do{
@@ -156,6 +165,7 @@ public class Player : NetworkBehaviour
         {
             var player = networkedClient.Value.PlayerObject.GetComponent<Player>();
             player.ActualPlayer.Value = tmp;
+            player.CardsToTake.Value = cardsToTake;
         }
     }
 
@@ -174,6 +184,8 @@ public class Player : NetworkBehaviour
                     player.PlayerCardStack.RemoveAt(player.PlayerCardStack.IndexOf((int)Card.Defuse));
 
                     player.ShuffleCardStackServerRpc();
+                    
+                    SetLastUsedCardServerRpc((int)Card.Defuse);
                 }
                 else
                 {
@@ -182,7 +194,9 @@ public class Player : NetworkBehaviour
                     {
                         var player1 = networkedClient.Value.PlayerObject.GetComponent<Player>();
                         player1.PlayersInGame.RemoveAt(player1.PlayersInGame.Single(r => r == playerNormalizedId));
+                        player1.CardStack.RemoveAt(0);
                     }
+                    SetLastUsedCardServerRpc((int)Card.Kitten);
                 }
             }
             else
@@ -216,11 +230,58 @@ public class Player : NetworkBehaviour
     [ServerRpc]
     public void ShuffleCardStackServerRpc()
     {
-        Guid g = Guid.NewGuid();
+        List<Card> tmpCardStack = new List<Card>();
+
+        foreach(int card in CardStack)
+        {
+            tmpCardStack.Add((Card)card);
+        }
+
+        tmpCardStack = ShuffleCardStack(tmpCardStack);
+
         foreach (var kvp in NetworkManager.Singleton.ConnectedClients)
         {
             var player = kvp.Value.PlayerObject.GetComponent<Player>();
-            player.CardStack.OrderBy(x => g).ToList();
+            player.CardStack.Clear();
+        }
+
+        foreach(Card card in tmpCardStack)
+        {
+            foreach (var kvp in NetworkManager.Singleton.ConnectedClients)
+            {
+                var player = kvp.Value.PlayerObject.GetComponent<Player>();
+                player.CardStack.Add((int)card);
+            }
+        }
+    }
+
+    [ServerRpc]
+    public void SetLastUsedCardServerRpc(int card)
+    {
+        foreach (var kvp in NetworkManager.Singleton.ConnectedClients)
+        {
+            var player = kvp.Value.PlayerObject.GetComponent<Player>();
+            player.LastUsedCard.Value = card;
+        }
+    }
+
+    [ServerRpc]
+    public void RemoveCardFromUserServerRpc(ulong playerId, int card)
+    {
+        var player = NetworkManager.Singleton.ConnectedClients[playerId].PlayerObject.GetComponent<Player>();
+        player.PlayerCardStack.RemoveAt(player.PlayerCardStack.IndexOf(card));
+    }
+
+    [ServerRpc]
+    public void GetCardFromUserServerRpc(ulong playerId, ulong targetPlayerId, int card)
+    {
+        var player = NetworkManager.Singleton.ConnectedClients[playerId].PlayerObject.GetComponent<Player>();
+        var targetPlayer = NetworkManager.Singleton.ConnectedClients[targetPlayerId].PlayerObject.GetComponent<Player>();
+
+        if(targetPlayer.PlayerCardStack.Count(c => c == card) >= 1)
+        {
+            RemoveCardFromUserServerRpc(targetPlayerId, card);
+            player.PlayerCardStack.Add(card);
         }
     }
 
@@ -237,6 +298,7 @@ public class Player : NetworkBehaviour
                 playerToAdd.PlayersNicks2.Add(i, player.Nick.Value);
                 playerToAdd.PlayersNetworkId.Add(i, kvp.Key);
                 playerToAdd.PlayersInGame.Add(i);
+                player.CardsToTake.Value = 1;
                 i++;
             }
         }
@@ -263,6 +325,7 @@ public class Player : NetworkBehaviour
                 cardStack.RemoveAt(0);
             }
             player.PlayerCardStack.Add((int)Card.Defuse);
+           
             player.ActualPlayer.Value = 0;
         }
 
