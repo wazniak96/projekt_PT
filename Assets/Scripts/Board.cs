@@ -40,6 +40,8 @@ public class Board : MonoBehaviour
     public GameObject FavorSecondPlayer;
     public GameObject FavorThirdPlayer;
 
+    public GameObject ActionPanel;
+
     private Player LocalPlayer = null;
     private List<GameObject> FavorPlayerButtons = new List<GameObject>();
     private List<int> ButtonToPlayer = new List<int>();
@@ -79,12 +81,12 @@ public class Board : MonoBehaviour
 
                 LocalPlayer.SyncCardNumberServerRpc();
 
-                DefuseCount.GetComponent<TextMeshProUGUI>().text = "Ilość: " + CountCardTypeInStack(Card.Defuse);
-                AttackCount.GetComponent<TextMeshProUGUI>().text = "Ilość: " + CountCardTypeInStack(Card.Attack);
-                SkipCount.GetComponent<TextMeshProUGUI>().text = "Ilość: " + CountCardTypeInStack(Card.Skip);
-                FavorCount.GetComponent<TextMeshProUGUI>().text = "Ilość: " + CountCardTypeInStack(Card.Favor);
-                ShuffleCount.GetComponent<TextMeshProUGUI>().text = "Ilość: " + CountCardTypeInStack(Card.Shuffle);
-                FutureCount.GetComponent<TextMeshProUGUI>().text = "Ilość: " + CountCardTypeInStack(Card.Future);
+                DefuseCount.GetComponent<TextMeshProUGUI>().text = CountCardTypeInStack(Card.Defuse).ToString();
+                AttackCount.GetComponent<TextMeshProUGUI>().text = CountCardTypeInStack(Card.Attack).ToString();
+                SkipCount.GetComponent<TextMeshProUGUI>().text = CountCardTypeInStack(Card.Skip).ToString();
+                FavorCount.GetComponent<TextMeshProUGUI>().text = CountCardTypeInStack(Card.Favor).ToString();
+                ShuffleCount.GetComponent<TextMeshProUGUI>().text = CountCardTypeInStack(Card.Shuffle).ToString();
+                FutureCount.GetComponent<TextMeshProUGUI>().text = CountCardTypeInStack(Card.Future).ToString();
 
                 if(LocalPlayer.PlayersNicks2.Count >= 2)
                 {
@@ -114,6 +116,7 @@ public class Board : MonoBehaviour
                     LastUsedCard.SetActive(true);
                     LastUsedCard.GetComponent<RawImage>().texture = getCardSprite((Card)LocalPlayer.LastUsedCard.Value);
                 }
+
             }
             catch(System.IndexOutOfRangeException ex) {}
             catch(System.ArgumentOutOfRangeException ex) {}
@@ -122,8 +125,14 @@ public class Board : MonoBehaviour
 
     public void TakeCard()
     {
-        LocalPlayer.DrawCardServerRpc(LocalPlayer.PlayersNetworkId[LocalPlayer.ActualPlayer.Value], LocalPlayer.CardsToTake.Value);
-        LocalPlayer.NextPlayerServerRpc();
+        int requestorId = LocalPlayer.PlayersNicks2.Where(pair => pair.Value == LocalPlayer.Nick.Value)
+                    .Select(pair => pair.Key)
+                    .FirstOrDefault();
+        if(LocalPlayer.ActualPlayer.Value == requestorId)
+        {
+            LocalPlayer.DrawCardServerRpc(LocalPlayer.PlayersNetworkId[LocalPlayer.ActualPlayer.Value], LocalPlayer.CardsToTake.Value);
+            LocalPlayer.NextPlayerServerRpc();
+        }
     }
 
     private int CountCardTypeInStack(Card card)
@@ -133,52 +142,82 @@ public class Board : MonoBehaviour
 
     public void Attack_Card()
     {
-        LocalPlayer.SetLastUsedCardServerRpc((int)Card.Attack);
-        LocalPlayer.NextPlayerServerRpc(2);
-        LocalPlayer.RemoveCardFromUserServerRpc(LocalPlayer.PlayersNetworkId[LocalPlayer.ActualPlayer.Value], (int)Card.Attack);
+        int requestorId = LocalPlayer.PlayersNicks2.Where(pair => pair.Value == LocalPlayer.Nick.Value)
+                    .Select(pair => pair.Key)
+                    .FirstOrDefault();
+        if(LocalPlayer.PlayerCardStack.IndexOf((int)Card.Attack) != -1 && LocalPlayer.ActualPlayer.Value == requestorId)
+        {
+            LocalPlayer.SetLastUsedCardServerRpc((int)Card.Attack);
+            LocalPlayer.NextPlayerServerRpc(2);
+            LocalPlayer.RemoveCardFromUserServerRpc(LocalPlayer.PlayersNetworkId[LocalPlayer.ActualPlayer.Value], (int)Card.Attack);
+        }
     }
 
     public void Skip_Card()
     {
-        LocalPlayer.SetLastUsedCardServerRpc((int)Card.Skip);
-        LocalPlayer.NextPlayerServerRpc();
-        LocalPlayer.RemoveCardFromUserServerRpc(LocalPlayer.PlayersNetworkId[LocalPlayer.ActualPlayer.Value], (int)Card.Skip);
+        int requestorId = LocalPlayer.PlayersNicks2.Where(pair => pair.Value == LocalPlayer.Nick.Value)
+                    .Select(pair => pair.Key)
+                    .FirstOrDefault();
+        if(LocalPlayer.PlayerCardStack.IndexOf((int)Card.Skip) != -1 && LocalPlayer.ActualPlayer.Value == requestorId)
+        {
+            LocalPlayer.SetLastUsedCardServerRpc((int)Card.Skip);
+            LocalPlayer.NextPlayerServerRpc();
+            LocalPlayer.RemoveCardFromUserServerRpc(LocalPlayer.PlayersNetworkId[LocalPlayer.ActualPlayer.Value], (int)Card.Skip);
+        }
     }
 
     public void Shuffle_Card()
     {
-        LocalPlayer.SetLastUsedCardServerRpc((int)Card.Shuffle);
-        LocalPlayer.ShuffleCardStackServerRpc();
-        LocalPlayer.RemoveCardFromUserServerRpc(LocalPlayer.PlayersNetworkId[LocalPlayer.ActualPlayer.Value], (int)Card.Shuffle);
+        int requestorId = LocalPlayer.PlayersNicks2.Where(pair => pair.Value == LocalPlayer.Nick.Value)
+                    .Select(pair => pair.Key)
+                    .FirstOrDefault();
+        if(LocalPlayer.PlayerCardStack.IndexOf((int)Card.Shuffle) != -1 && LocalPlayer.ActualPlayer.Value == requestorId)
+        {
+            LocalPlayer.SetLastUsedCardServerRpc((int)Card.Shuffle);
+            LocalPlayer.ShuffleCardStackServerRpc();
+            LocalPlayer.RemoveCardFromUserServerRpc(LocalPlayer.PlayersNetworkId[LocalPlayer.ActualPlayer.Value], (int)Card.Shuffle);
+        }
     }
 
     public void Future_Card()
     {
-        LocalPlayer.SetLastUsedCardServerRpc((int)Card.Future);
-        FutureFirstCard.GetComponent<RawImage>().texture = getCardSprite((Card)LocalPlayer.CardStack[0]);
-        FutureSecondCard.GetComponent<RawImage>().texture = getCardSprite((Card)LocalPlayer.CardStack[1]);
-        FutureThirdCard.GetComponent<RawImage>().texture = getCardSprite((Card)LocalPlayer.CardStack[2]);
+        int requestorId = LocalPlayer.PlayersNicks2.Where(pair => pair.Value == LocalPlayer.Nick.Value)
+                    .Select(pair => pair.Key)
+                    .FirstOrDefault();
+        if(LocalPlayer.PlayerCardStack.IndexOf((int)Card.Future) != -1 && LocalPlayer.ActualPlayer.Value == requestorId)
+        {
+            LocalPlayer.SetLastUsedCardServerRpc((int)Card.Future);
+            FutureFirstCard.GetComponent<RawImage>().texture = getCardSprite((Card)LocalPlayer.CardStack[0]);
+            FutureSecondCard.GetComponent<RawImage>().texture = getCardSprite((Card)LocalPlayer.CardStack[1]);
+            FutureThirdCard.GetComponent<RawImage>().texture = getCardSprite((Card)LocalPlayer.CardStack[2]);
 
-        LocalPlayer.RemoveCardFromUserServerRpc(LocalPlayer.PlayersNetworkId[LocalPlayer.ActualPlayer.Value], (int)Card.Future);
+            LocalPlayer.RemoveCardFromUserServerRpc(LocalPlayer.PlayersNetworkId[LocalPlayer.ActualPlayer.Value], (int)Card.Future);
+        }
     }
 
     public void Favor_Card()
     {
-        LocalPlayer.SetLastUsedCardServerRpc((int)Card.Favor);
-        int buttonNumber = 0;
-        ButtonToPlayer.Clear();
-        foreach (int playerId in LocalPlayer.PlayersInGame)
+        int requestorId = LocalPlayer.PlayersNicks2.Where(pair => pair.Value == LocalPlayer.Nick.Value)
+                    .Select(pair => pair.Key)
+                    .FirstOrDefault();
+        if(LocalPlayer.PlayerCardStack.IndexOf((int)Card.Favor) != -1 && LocalPlayer.ActualPlayer.Value == requestorId)
         {
-            if(playerId != LocalPlayer.ActualPlayer.Value)
+            LocalPlayer.SetLastUsedCardServerRpc((int)Card.Favor);
+            int buttonNumber = 0;
+            ButtonToPlayer.Clear();
+            foreach (int playerId in LocalPlayer.PlayersInGame)
             {
-                FavorPlayerButtons[buttonNumber].SetActive(true);
-                FavorPlayerButtons[buttonNumber].GetComponentInChildren<TextMeshProUGUI>().text = LocalPlayer.PlayersNicks2[playerId];
-                ButtonToPlayer.Add(playerId);
-                buttonNumber++;
+                if(playerId != LocalPlayer.ActualPlayer.Value)
+                {
+                    FavorPlayerButtons[buttonNumber].SetActive(true);
+                    FavorPlayerButtons[buttonNumber].GetComponentInChildren<TextMeshProUGUI>().text = LocalPlayer.PlayersNicks2[playerId];
+                    ButtonToPlayer.Add(playerId);
+                    buttonNumber++;
+                }
             }
-        }
 
-        LocalPlayer.RemoveCardFromUserServerRpc(LocalPlayer.PlayersNetworkId[LocalPlayer.ActualPlayer.Value], (int)Card.Favor);
+            LocalPlayer.RemoveCardFromUserServerRpc(LocalPlayer.PlayersNetworkId[LocalPlayer.ActualPlayer.Value], (int)Card.Favor);
+        }
     }
 
     public void FavorSelectUser(int buttonNumber)
@@ -191,20 +230,15 @@ public class Board : MonoBehaviour
         LocalPlayer.GetCardFromUserServerRpc(LocalPlayer.PlayersNetworkId[LocalPlayer.ActualPlayer.Value], LocalPlayer.PlayersNetworkId[FavorSelectedUser], card);
     }
 
-    public void showCards()
+    public void ShowActionsPanel(int userId)
     {
-        foreach(int cardd in LocalPlayer.CardStack)
-        {
-            Debug.Log((Card)cardd);
-        }
-    }
+        int requestorId = LocalPlayer.PlayersNicks2.Where(pair => pair.Value == LocalPlayer.Nick.Value)
+                    .Select(pair => pair.Key)
+                    .FirstOrDefault();
 
-    public void test(int x)
-    {
-        foreach(int cardd in LocalPlayer.CardStack)
-        {
-            Debug.Log((Card)cardd);
-        }
+        if(requestorId == userId)
+            ActionPanel.SetActive(true);
+
     }
 
     private Texture2D getCardSprite(Card card) {
